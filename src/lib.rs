@@ -15,6 +15,19 @@ pub struct Block {
     hash: String,
 }
 
+impl Block {
+    pub fn calculate_hash(&self) -> String {
+        let &Block {
+            index,
+            ref previous_hash,
+            timestamp,
+            ref data,
+            ..
+        } = self;
+        calculate_hash(index, previous_hash, timestamp, data)
+    }
+}
+
 lazy_static! {
     static ref BLOCKCHAIN: Vec<Block> = vec![
         Block {
@@ -29,7 +42,10 @@ lazy_static! {
 
 pub fn calculate_hash(index: u32, previous_hash: &str, timestamp: i64, data: &str) -> String {
     let mut hasher = Sha256::new();
-    println!("{}", format!("{}{}{}{}", index, previous_hash, timestamp, data));
+    println!(
+        "{}",
+        format!("{}{}{}{}", index, previous_hash, timestamp, data)
+    );
     hasher.input_str(&format!("{}{}{}{}", index, previous_hash, timestamp, data));
     hasher.result_str()
 }
@@ -53,6 +69,21 @@ pub fn get_latest_block<'a>() -> &'a Block {
         .last()
         .expect("There must be at least one element in list");
     tmp
+}
+
+pub fn is_valid_new_block(new_block: &Block, prev_block: &Block) -> bool {
+    if prev_block.index + 1 != new_block.index {
+        println!("Invalid index");
+        false
+    } else if prev_block.hash != new_block.previous_hash {
+        println!("Invalid previous hash");
+        false
+    } else if new_block.calculate_hash() != new_block.hash {
+        println!("Invalid hash for new block");
+        false
+    } else {
+        true
+    }
 }
 
 #[cfg(test)]
