@@ -107,4 +107,10 @@ mod tests {
         let hash = calculate_hash(block.index, &previous_hash, block.timestamp, &block.data);
         assert_eq!(hash, block.hash);
     }
+
+    #[test]
+    fn check_valid_block() {
+        let new_block = generate_next_block("test");
+        assert_eq!(is_valid_new_block(&new_block, &BLOCKCHAIN[0]), true);
+    }
 }
