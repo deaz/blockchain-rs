@@ -7,6 +7,7 @@ use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use chrono::prelude::*;
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct Block {
     index: u32,
     previous_hash: String,
@@ -86,6 +87,17 @@ pub fn is_valid_new_block(new_block: &Block, prev_block: &Block) -> bool {
     }
 }
 
+pub fn is_valid_blockchain(blockchain: &[Block]) -> bool {
+    if blockchain[0] != BLOCKCHAIN[0] {
+        return false;
+    }
+
+    blockchain
+        .iter()
+        .zip(blockchain.iter().skip(1))
+        .all(|(prev_block, block)| is_valid_new_block(block, prev_block))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,6 +123,84 @@ mod tests {
     #[test]
     fn check_valid_block() {
         let new_block = generate_next_block("test");
-        assert_eq!(is_valid_new_block(&new_block, &BLOCKCHAIN[0]), true);
+        assert!(is_valid_new_block(&new_block, &BLOCKCHAIN[0]));
+    }
+
+    #[test]
+    fn check_valid_chain() {
+        let chain = vec![
+            Block {
+                index: 0,
+                previous_hash: String::from("0"),
+                timestamp: 0,
+                data: String::from("Genesis block"),
+                hash: String::from(
+                    "2740aaf9a9a4bb7dfdbcdf12dc1c240f5e1f715330eae639ca745e20df365a0f",
+                ),
+            },
+            Block {
+                index: 1,
+                previous_hash: String::from(
+                    "2740aaf9a9a4bb7dfdbcdf12dc1c240f5e1f715330eae639ca745e20df365a0f",
+                ),
+                timestamp: 100,
+                data: String::from("second block"),
+                hash: String::from(
+                    "c11086b1550b57f25ecc85802f1b7c968d009505ec8ec1c04fb87e1eba08348c",
+                ),
+            },
+            Block {
+                index: 2,
+                previous_hash: String::from(
+                    "c11086b1550b57f25ecc85802f1b7c968d009505ec8ec1c04fb87e1eba08348c",
+                ),
+                timestamp: 200,
+                data: String::from("third block"),
+                hash: String::from(
+                    "5341aab41e6d88149dba3c25d2949134072799e6a1f769e3a2de0990de09466e",
+                ),
+            },
+        ];
+
+        assert!(is_valid_blockchain(&chain));
+    }
+
+    #[test]
+    fn check_invalid_chain() {
+        let chain = vec![
+            Block {
+                index: 0,
+                previous_hash: String::from("0"),
+                timestamp: 0,
+                data: String::from("Genesis block"),
+                hash: String::from(
+                    "2740aaf9a9a4bb7dfdbcdf12dc1c240f5e1f715330eae639ca745e20df365a0f",
+                ),
+            },
+            Block {
+                index: 1,
+                previous_hash: String::from(
+                    "2740aaf9a9a4bb7dfdbcdf12dc1c240f5e1f715330eae639ca745e20df365a0f",
+                ),
+                timestamp: 100,
+                data: String::from("second block with changed data"),
+                hash: String::from(
+                    "c11086b1550b57f25ecc85802f1b7c968d009505ec8ec1c04fb87e1eba08348c",
+                ),
+            },
+            Block {
+                index: 2,
+                previous_hash: String::from(
+                    "c11086b1550b57f25ecc85802f1b7c968d009505ec8ec1c04fb87e1eba08348c",
+                ),
+                timestamp: 200,
+                data: String::from("third block"),
+                hash: String::from(
+                    "5341aab41e6d88149dba3c25d2949134072799e6a1f769e3a2de0990de09466e",
+                ),
+            },
+        ];
+
+        assert!(!is_valid_blockchain(&chain));
     }
 }
