@@ -6,8 +6,9 @@ extern crate lazy_static;
 use chrono::prelude::*;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use std::sync::RwLock;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Block {
     index: u32,
     previous_hash: String,
@@ -30,7 +31,7 @@ impl Block {
 }
 
 lazy_static! {
-    pub static ref BLOCKCHAIN: Vec<Block> = vec![
+    pub static ref BLOCKCHAIN: RwLock<Vec<Block>> = RwLock::new(vec![
         Block {
             index: 0,
             previous_hash: String::from("0"),
@@ -38,17 +39,19 @@ lazy_static! {
             data: String::from("Genesis block"),
             hash: String::from("2740aaf9a9a4bb7dfdbcdf12dc1c240f5e1f715330eae639ca745e20df365a0f"),
         },
-    ];
+    ]);
 }
 
 pub fn calculate_hash(index: u32, previous_hash: &str, timestamp: i64, data: &str) -> String {
     let mut hasher = Sha256::new();
-    println!(
-        "{}",
-        format!("{}{}{}{}", index, previous_hash, timestamp, data)
-    );
     hasher.input_str(&format!("{}{}{}{}", index, previous_hash, timestamp, data));
     hasher.result_str()
+}
+
+pub fn add_block(new_block: Block) {
+    if is_valid_new_block(&new_block, &get_latest_block()) {
+        BLOCKCHAIN.write().unwrap().push(new_block);
+    }
 }
 
 pub fn generate_next_block(data: &str) -> Block {
@@ -65,11 +68,12 @@ pub fn generate_next_block(data: &str) -> Block {
     }
 }
 
-pub fn get_latest_block<'a>() -> &'a Block {
-    let tmp: &'a Block = BLOCKCHAIN
+pub fn get_latest_block() -> Block {
+    let blockchain = BLOCKCHAIN.read().unwrap();
+    blockchain
         .last()
-        .expect("There must be at least one element in list");
-    tmp
+        .expect("There must be at least one element in list")
+        .clone()
 }
 
 pub fn is_valid_new_block(new_block: &Block, prev_block: &Block) -> bool {
@@ -88,7 +92,7 @@ pub fn is_valid_new_block(new_block: &Block, prev_block: &Block) -> bool {
 }
 
 pub fn is_valid_blockchain(blockchain: &[Block]) -> bool {
-    if blockchain[0] != BLOCKCHAIN[0] {
+    if blockchain[0] != BLOCKCHAIN.read().unwrap()[0] {
         return false;
     }
 
