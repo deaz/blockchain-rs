@@ -7,3 +7,5 @@ authors = ["Ivan Vologdin <vologdin.nsk@gmail.com>"]
 rust-crypto = "0.2.36"
 chrono = "0.4.0"
 lazy_static = "1.0"
+rocket = "0.3.6"
+rocket_codegen = "0.3.6"

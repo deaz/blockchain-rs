@@ -3,9 +3,9 @@ extern crate crypto;
 #[macro_use]
 extern crate lazy_static;
 
+use chrono::prelude::*;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use chrono::prelude::*;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Block {
