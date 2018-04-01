@@ -30,7 +30,7 @@ impl Block {
 }
 
 lazy_static! {
-    static ref BLOCKCHAIN: Vec<Block> = vec![
+    pub static ref BLOCKCHAIN: Vec<Block> = vec![
         Block {
             index: 0,
             previous_hash: String::from("0"),

@@ -2,12 +2,13 @@
 #![plugin(rocket_codegen)]
 
 extern crate rocket;
+extern crate blockchain_rs;
 
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+#[get("/blocks")]
+fn blocks() -> String {
+    format!("{:#?}", *blockchain_rs::BLOCKCHAIN)
 }
 
 fn main() {
-    rocket::ignite().mount("/", routes![index]).launch();
+    rocket::ignite().mount("/", routes![blocks]).launch();
 }
