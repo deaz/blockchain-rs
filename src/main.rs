@@ -26,6 +26,16 @@ fn mine_block(form: Form<Block>) {
     // TODO: broadcast message
 }
 
+#[get("/peers")]
+fn peers() -> String {
+    "peers will be here".to_owned()
+}
+
+#[post("/add-peer")]
+fn add_peer() {
+    // TODO: add peer to list
+}
+
 fn main() {
     rocket::ignite()
         .mount("/", routes![blocks, mine_block])

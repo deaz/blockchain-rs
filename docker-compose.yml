@@ -1,0 +1,7 @@
+version: '3'
+services:
+  node1:
+    build: .
+    ports:
+      - "8000:8000"
+    entrypoint: cargo run
