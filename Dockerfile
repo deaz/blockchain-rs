@@ -1,12 +1,15 @@
 FROM rustlang/rust:nightly
 
 WORKDIR /opt/project
-
 ENV USER=root
+RUN cargo new blockchain-rs
 
-RUN cargo new blockchain-rs \
-    && cd blockchain-rs \
-    && cargo build --release
+# TODO: use /opt/project as root for crate
+WORKDIR blockchain-rs
+COPY Cargo.toml Cargo.lock ./
+RUN cargo build --release
+# for development build cache in ./target/debug
+RUN cargo build
 
 COPY . .
 

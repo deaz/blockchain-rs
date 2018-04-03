@@ -38,6 +38,6 @@ fn add_peer() {
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![blocks, mine_block])
+        .mount("/", routes![blocks, mine_block, peers, add_peer])
         .launch();
 }

@@ -5,3 +5,6 @@ services:
     ports:
       - "8000:8000"
     entrypoint: cargo run
+    volumes:
+      - /opt/project/blockchain-rs/target
+      - .:/opt/project/blockchain-rs:ro
