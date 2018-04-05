@@ -8,3 +8,19 @@ services:
     volumes:
       - /opt/project/blockchain-rs/target
       - .:/opt/project/blockchain-rs:ro
+  node2:
+    build: .
+    ports:
+      - "8001:8000"
+    entrypoint: cargo run
+    volumes:
+      - /opt/project/blockchain-rs/target
+      - .:/opt/project/blockchain-rs:ro
+  node3:
+    build: .
+    ports:
+      - "8002:8000"
+    entrypoint: cargo run
+    volumes:
+      - /opt/project/blockchain-rs/target
+      - .:/opt/project/blockchain-rs:ro

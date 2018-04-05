@@ -1,4 +1,4 @@
-FROM rustlang/rust:nightly
+FROM shepmaster/rust-nightly
 
 WORKDIR /opt/project
 ENV USER=root
