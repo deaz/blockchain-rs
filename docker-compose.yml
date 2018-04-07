@@ -8,6 +8,11 @@ services:
     volumes:
       - /opt/project/blockchain-rs/target
       - .:/opt/project/blockchain-rs:ro
+    environment:
+      PEERS: "ws://node2:3012,ws://node3:3012"
+    depends_on:
+      - node2
+      - node3
   node2:
     build: .
     ports:

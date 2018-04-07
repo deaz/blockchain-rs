@@ -14,6 +14,7 @@ extern crate serde_json;
 use blockchain_rs::add_block;
 use blockchain_rs::generate_next_block;
 use rocket::request::Form;
+use std::env;
 use std::sync::RwLock;
 use std::thread;
 use ws::{connect, listen, Sender};
@@ -58,33 +59,49 @@ fn peers() -> String {
 #[post("/add-peer", data = "<form>")]
 fn add_peer(form: Form<Peer>) {
     let peer_address = form.get().peer.clone();
-    thread::spawn(move || {
-        connect(peer_address, |_out| {
-            |msg| {
-                println!("Got message as client: {:?}", msg);
-                if let ws::Message::Text(ref text) = msg {
-                    let _message: Message = serde_json::from_str(&text).unwrap();
+    connect_to_peers(vec![peer_address]);
+}
+
+fn connect_to_peers(peers: Vec<String>) {
+    for peer in peers {
+        thread::spawn(move || {
+            connect(peer, |_out| {
+                |msg| {
+                    println!("Got message as client: {:?}", msg);
+                    if let ws::Message::Text(ref text) = msg {
+                        let _message: Message = serde_json::from_str(&text).unwrap();
+                    }
+                    Result::Ok(())
                 }
-                Result::Ok(())
-            }
-        }).unwrap()
-    });
+            }).unwrap();
+        });
+    }
 }
 
 fn main() {
-    thread::spawn(|| {
+    let t1 = thread::spawn(|| {
         rocket::ignite()
             .mount("/", routes![blocks, mine_block, peers, add_peer])
             .launch()
     });
 
-    listen("0.0.0.0:3012", |out| {
-        let message: String = serde_json::to_string(&Message::QueryLatest).unwrap();
-        out.send(message).unwrap();
-        PEERS.write().unwrap().push(out);
-        |msg: ws::Message| {
-            println!("Got message as server: {:?}", msg);
-            Result::Ok(())
-        }
-    }).unwrap();
+    let t2 = thread::spawn(|| {
+        listen("0.0.0.0:3012", |out| {
+            let message: String = serde_json::to_string(&Message::QueryLatest).unwrap();
+            out.send(message).unwrap();
+            PEERS.write().unwrap().push(out);
+            |msg: ws::Message| {
+                println!("Got message as server: {:?}", msg);
+                Result::Ok(())
+            }
+        }).unwrap();
+    });
+
+    if let Ok(peers_string) = env::var("PEERS") {
+        let peers: Vec<String> = peers_string.split(",").map(String::from).collect();
+        connect_to_peers(peers);
+    }
+
+    t1.join().unwrap();
+    t2.join().unwrap();
 }
