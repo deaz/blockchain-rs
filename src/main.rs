@@ -42,7 +42,7 @@ struct Peer {
 
 #[get("/blocks")]
 fn blocks() -> String {
-    format!("{:#?}", *blockchain_rs::BLOCKCHAIN)
+    format!("{:#?}", *BLOCKCHAIN)
 }
 
 #[post("/mine-block", data = "<form>")]
@@ -55,7 +55,15 @@ fn mine_block(form: Form<Block>) {
 
 #[get("/peers")]
 fn peers() -> String {
-    "peers will be here".to_owned()
+    format!(
+        "{:?}",
+        PEERS
+            .read()
+            .unwrap()
+            .iter()
+            .map(|peer| peer.connection_id())
+            .collect::<Vec<_>>()
+    )
 }
 
 #[post("/add-peer", data = "<form>")]
@@ -145,10 +153,7 @@ fn connect_to_peers(peers: Vec<String>) {
         thread::spawn(move || {
             connect(peer, |out| {
                 PEERS.write().unwrap().push(out.clone());
-                move |msg| {
-                    println!("Got message as client: {:?}", msg);
-                    message_handler(msg, out.clone())
-                }
+                move |msg| message_handler(msg, out.clone())
             }).unwrap();
         });
     }
@@ -168,10 +173,7 @@ fn main() {
             let message: String = serde_json::to_string(&Message::QueryLatest).unwrap();
             out.send(message).unwrap();
             PEERS.write().unwrap().push(out.clone());
-            move |msg: ws::Message| {
-                println!("Got message as server: {:?}", msg);
-                message_handler(msg, out.clone())
-            }
+            move |msg: ws::Message| message_handler(msg, out.clone())
         }).unwrap();
     });
 
