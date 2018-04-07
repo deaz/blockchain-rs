@@ -11,8 +11,8 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use blockchain_rs::add_block;
-use blockchain_rs::generate_next_block;
+use blockchain_rs::{add_block, generate_next_block, get_latest_block, is_valid_blockchain,
+                    BLOCKCHAIN};
 use rocket::request::Form;
 use std::env;
 use std::sync::RwLock;
@@ -26,6 +26,8 @@ lazy_static! {
 #[derive(Serialize, Deserialize)]
 enum Message {
     QueryLatest,
+    QueryAll,
+    ResponseBlockchain(Vec<blockchain_rs::Block>),
 }
 
 #[derive(FromForm)]
@@ -48,7 +50,7 @@ fn mine_block(form: Form<Block>) {
     let new_block = generate_next_block(&form.get().data);
     println!("New block:\n{:#?}", new_block);
     add_block(new_block);
-    // TODO: broadcast message
+    broadcast(&get_latest_response());
 }
 
 #[get("/peers")]
@@ -62,16 +64,90 @@ fn add_peer(form: Form<Peer>) {
     connect_to_peers(vec![peer_address]);
 }
 
+fn message_handler(msg: ws::Message, out: Sender) -> Result<(), ws::Error> {
+    if let ws::Message::Text(ref text) = msg {
+        let message: Message = serde_json::from_str(&text).unwrap();
+        match message {
+            Message::QueryLatest => {
+                out.send(get_latest_response()).unwrap();
+            }
+            Message::QueryAll => {
+                out.send(get_chain_response()).unwrap();
+            }
+            Message::ResponseBlockchain(block) => handle_blockchain_response(block),
+        };
+    }
+    Result::Ok(())
+}
+
+fn get_chain_response() -> String {
+    serde_json::to_string(&Message::ResponseBlockchain(
+        BLOCKCHAIN.read().unwrap().to_vec(),
+    )).unwrap()
+}
+
+fn get_latest_response() -> String {
+    serde_json::to_string(&Message::ResponseBlockchain(vec![get_latest_block()])).unwrap()
+}
+
+fn get_query_all() -> String {
+    serde_json::to_string(&Message::QueryAll).unwrap()
+}
+
+fn replace_chain(new_blocks: Vec<blockchain_rs::Block>) {
+    if is_valid_blockchain(&new_blocks) && new_blocks.len() > BLOCKCHAIN.read().unwrap().len() {
+        println!(
+            "Received blockchain is valid. Replacing current blockchain with received blockchain"
+        );
+        *BLOCKCHAIN.write().unwrap() = new_blocks;
+        broadcast(&get_latest_response());
+    } else {
+        println!("Received blockchain invalid");
+    }
+}
+
+fn handle_blockchain_response(blockchain: Vec<blockchain_rs::Block>) {
+    let received_blocks_count = blockchain.len();
+    let latest_received_block = blockchain.last().unwrap().clone();
+    let latest_block = get_latest_block();
+    if latest_received_block.index > latest_block.index {
+        println!(
+            "Blockchain possibly behind. We got: {} Peer got: {}",
+            latest_block.index, latest_received_block.index
+        );
+        if latest_block.hash == latest_received_block.previous_hash {
+            println!("We can append the received block to our chain");
+            BLOCKCHAIN
+                .write()
+                .unwrap()
+                .push(latest_received_block.clone());
+            broadcast(&get_latest_response())
+        } else if received_blocks_count == 1 {
+            println!("We have to query the chain from our peer");
+            broadcast(&get_query_all());
+        } else {
+            println!("Received blockchain is longer than current blockchain");
+            replace_chain(blockchain);
+        }
+    } else {
+        println!("Received chain is no longer than current chain");
+    }
+}
+
+fn broadcast(message: &str) {
+    for peer in PEERS.read().unwrap().iter() {
+        peer.send(message).unwrap();
+    }
+}
+
 fn connect_to_peers(peers: Vec<String>) {
     for peer in peers {
         thread::spawn(move || {
-            connect(peer, |_out| {
-                |msg| {
+            connect(peer, |out| {
+                PEERS.write().unwrap().push(out.clone());
+                move |msg| {
                     println!("Got message as client: {:?}", msg);
-                    if let ws::Message::Text(ref text) = msg {
-                        let _message: Message = serde_json::from_str(&text).unwrap();
-                    }
-                    Result::Ok(())
+                    message_handler(msg, out.clone())
                 }
             }).unwrap();
         });
@@ -87,12 +163,14 @@ fn main() {
 
     let t2 = thread::spawn(|| {
         listen("0.0.0.0:3012", |out| {
+            PEERS.write().unwrap().push(out.clone());
+
             let message: String = serde_json::to_string(&Message::QueryLatest).unwrap();
             out.send(message).unwrap();
-            PEERS.write().unwrap().push(out);
-            |msg: ws::Message| {
+            PEERS.write().unwrap().push(out.clone());
+            move |msg: ws::Message| {
                 println!("Got message as server: {:?}", msg);
-                Result::Ok(())
+                message_handler(msg, out.clone())
             }
         }).unwrap();
     });

@@ -2,19 +2,23 @@ extern crate chrono;
 extern crate crypto;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 
 use chrono::prelude::*;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use std::sync::RwLock;
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
-    index: u32,
-    previous_hash: String,
-    timestamp: i64,
-    data: String,
-    hash: String,
+    pub index: u32,
+    pub previous_hash: String,
+    pub timestamp: i64,
+    pub data: String,
+    pub hash: String,
 }
 
 impl Block {
